@@ -1,0 +1,215 @@
+<!--
+ * Copyright © 2014 - 2018 Leipzig University (Database Research Group)
+ * Copyright © 2018 Neo4j Inc (Adaption by Michael Hunger)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neo4j Demo | Grouping</title>
+    <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-exp.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-icons.min.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/basic/jquery.qtip.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css"/>
+    <link rel="stylesheet" type="text/css" href="css/layout.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/neo4j-driver"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/2.7.15/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-qtip@2.7.1/cytoscape-qtip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/basic/jquery.qtip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.2/dist/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.2.1/cytoscape-dagre.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+
+    <script src="js/grouping.js"></script>
+</head>
+<body>
+<header class="page-header">
+    <section class="container">
+        <nav class="navbar">
+            <section class="navbar-section">
+                <a href="/">
+                    <img src="https://go.neo4j.com/rs/710-RRC-335/images/neo4j_logo.svg" class="navbar-logo">
+                </a>
+            </section>
+            <section class="navbar-section">
+            Graph Grouping Demo
+            </section>
+        </nav>
+    </section>
+</header>
+<section class="navbar-spacer">&nbsp;</section>
+
+<div class="content-wrapper">
+    <div class="container">
+        <div class="columns">
+            <div class="column col-4">
+                <div class="panel">
+                    <div class="panel-body">
+                        <form id="grouping-query-form">
+                            <fieldset>
+                                <div class="header">
+                                    Input Parameters
+                                    <hr>
+                                </div>
+                                <div class="form-group">
+                                    <div class="input-group columns">
+                                        <label class="form-label column col-1" for="databaseName">Graph</label>
+                                        <select class="form-select column col-4" id="databaseName" name="databaseName">
+                                            <option value="localhost">Localhost</option>
+                                            <option value="community">Community-Graph</option>
+                                        </select>
+                                        <label class="form-label column col-2" for="url">URL</label>
+                                        <input class="form-input  column col-4" id="url" name="url" type="url" value="bolt://localhost"></input>
+
+                                        <label class="form-label column col-1" for="user">User</label>
+                                        <input class="form-input column col-4" id="user" name="user" type="text" value="neo4j"></input>
+                                        <label class="form-label column col-2" for="password">Password</label>
+                                        <input class="form-input column col-4" id="password" name="password" type="password" value="test"></input>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <button id="connect" class="btn input-group-btn">Connect</button>
+                                    <button id="showMetaGraph" class="btn input-group-btn" disabled="true">Show Meta Graph</button>
+                                    <button id="showWholeGraph" class="btn input-group-btn" disabled="true">Show Sample Data</button>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="nodeFilters">
+                                        Node Label Filter
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="(Optional) Specify a set of labels to filter the vertices used for grouping.">?</span>
+                                    </label>
+                                    <select id="nodeFilters" name="nodeFilters" multiple style="width:100%">
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="relationshipFilters">
+                                        Relationship Label Filter
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="(Optional) Specify a set of labels to filter the relationships used for grouping.">?</span>
+
+                                    </label>
+                                    <select class="form-select" id="relationshipFilters" name="relationshipFilters" style="width:100%" multiple>
+                                    </select>
+                                </div>
+                            </fieldset>
+
+                            <fieldset>
+                                <div class="header">
+                                    Node Grouping Parameters
+                                    <hr>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="nodePropertyKeys">
+                                        Grouping Keys
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="Select one or more property keys used for node grouping.">?</span>
+                                    </label>
+                                    <select class="form-select" id="nodePropertyKeys" name="nodePropertyKeys"  style="width:100%" multiple>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="nodeAggrFuncs">
+                                        Aggregation Function
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="(Optional) The selected aggregation functions are evaluated for each resulting node group.">?</span>
+                                    </label>
+                                    <select class="form-select" id="nodeAggrFuncs" name="nodeAggrFuncs"  style="width:100%" multiple>
+                                    </select>
+                                </div>
+                            </fieldset>
+
+                            <fieldset>
+                                <div class="header">
+                                    Relationships Grouping Parameters
+                                    <hr>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="relationshipPropertyKeys">
+                                        Grouping Properties
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="(Optional) Select one or more property keys used for relationship grouping.">?</span>
+                                    </label>
+                                    <select class="form-select" id="relationshipPropertyKeys" name="relationshipPropertyKeys" style="width:100%" multiple>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="relationshipAggrFuncs">
+                                        Aggregation Function
+                                        <span class="option-tooltip tooltip tooltip-right" data-tooltip="(Optional) The selected aggregation functions are evaluated for each resulting relationship group.">?</span>
+                                    </label>
+                                    <select class="form-select" id="relationshipAggrFuncs" name="relationshipAggrFuncs" style="width:100%" multiple>
+                                    </select>
+                                </div>
+                            </fieldset>
+                        </form>
+                    </div>
+                    <div class="panel-footer">
+                        <button id="execute" disabled="disabled" class="execute-button btn btn-primary btn-block">Execute</button>
+                    </div>
+                </div>
+            </div>
+            <div class="column col-8">
+                <div class="card">
+                    <div class="card-body">
+                        <div id="canvas"></div>
+                    </div>
+                    <div class="card-footer">
+                        <h5>View options</h5>
+                        <label class="form-switch" for="showRelationshipLabels">
+                            <input type="checkbox" id="showRelationshipLabels" name="showRelationshipLabels" value="true" class="redraw">
+                            <i class="form-icon"></i> Show Relationship Labels
+                        </label>
+                        <label class="form-switch" for="showCountAsSize">
+                            <input type="checkbox" id="showCountAsSize" name="showCountAsSize" value="true" class="redraw">
+                            <i class="form-icon"></i> Adaptive element size
+                            <span class="option-tooltip tooltip tooltip-top" data-tooltip="Requires count aggregate functions.">?</span>
+                        </label>
+                        <label class="form-switch" for="hideNullGroups">
+                            <input type="checkbox" id="hideNullGroups" name="hideNullGroups" value="true" class="redraw">
+                            <i class="form-icon"></i> Hide NULL groups
+                        </label>
+                        <label class="form-switch" for="hideDisconnected">
+                            <input type="checkbox" id="hideDisconnected" name="hideDisconnected" value="true" class="redraw">
+                            <i class="form-icon"></i> Hide disconnected vertices
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div class="container">
+        <p>
+            <a href="https://github.com/neo4j-examples/neo4j-grouping"> Github </a>
+            |
+            Neo4j Version 3.4.0, APOC 3.4.0.1
+            |
+            Demo Version 0.0.1
+        </p>
+        <p>
+            Licensed under the <a href="https://github.com/neo4j-examples/neo4j-grouping/blob/master/LICENSE" >Apache 2.0 License</a>.
+            Based on work by Martin Junghanns and Max Kiessling as the <a href="https://github.com/dbs-leipzig/gradoop_demo#graph-grouping" target="_blank">Gradoop Grouping Demo</a>
+        </p>
+    </div>
+</footer>
+</body>
+</html>
